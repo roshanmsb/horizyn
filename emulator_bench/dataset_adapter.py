@@ -7,7 +7,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
-from tqdm import tqdm
+try:
+    from src.utils.rich_progress import progress, write
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from src.utils.rich_progress import progress, write
 
 from .utils import (
     DEFAULT_DATASET_ROOT,
@@ -179,7 +185,7 @@ def _filter_horizon_featurizable_reactions(records: pd.DataFrame, split_name: st
     )
 
     invalid_reactions = set()
-    for key in tqdm(augmented_keys, desc=f"{split_name} fingerprints", leave=False):
+    for key in progress(augmented_keys, desc=f"{split_name} fingerprints", leave=False):
         reaction_id = key_to_reaction_id[key]
         if reaction_id in invalid_reactions:
             continue
@@ -245,7 +251,7 @@ def load_horizon_records(
     truncated_rows = 0
 
     columns = ["rxn_smiles", "sequence", "ec_number"]
-    for row in tqdm(
+    for row in progress(
         raw_df.loc[:, columns].itertuples(index=False),
         total=raw_rows,
         desc=f"{split_name} rows",
