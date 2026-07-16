@@ -10,7 +10,13 @@ from pathlib import Path
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from tqdm import tqdm
+try:
+    from src.utils.rich_progress import progress, write
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from src.utils.rich_progress import progress, write
 
 from .results import compute_care_task2_metrics, compute_supplemental_ec_metrics
 from .utils import (
@@ -272,7 +278,7 @@ def write_care_ranked_csv(
         device=device,
     )
     with torch.no_grad():
-        for start in tqdm(range(0, len(protein_ids), batch_size), desc="CARE targets"):
+        for start in progress(range(0, len(protein_ids), batch_size), desc="CARE targets"):
             end = min(start + batch_size, len(protein_ids))
             batch_keys = protein_ids[start:end]
             target_vecs = torch.stack([protein_embeds[key] for key in batch_keys]).to(device)
@@ -300,7 +306,7 @@ def write_care_ranked_csv(
     rows = []
 
     with torch.no_grad():
-        for reaction_id in tqdm(sorted(truth), desc=f"CARE {eval_split} ranks"):
+        for reaction_id in progress(sorted(truth), desc=f"CARE {eval_split} ranks"):
             query_scores = []
             for suffix in ("f", "r"):
                 if direction_aggregation == "forward" and suffix == "r":

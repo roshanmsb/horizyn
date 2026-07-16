@@ -7,7 +7,13 @@ import h5py
 import numpy as np
 import pandas as pd
 import torch
-from tqdm import tqdm
+try:
+    from src.utils.rich_progress import progress, write
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from src.utils.rich_progress import progress, write
 
 from .dataset_adapter import (
     DEFAULT_MAX_SEQUENCE_LENGTH,
@@ -121,7 +127,7 @@ def embed_missing_with_prott5(
 
     written = 0
     records = missing.to_dict("records")
-    for start in tqdm(range(0, len(records), batch_size), desc="ProtT5 embeddings"):
+    for start in progress(range(0, len(records), batch_size), desc="ProtT5 embeddings"):
         batch = records[start : start + batch_size]
         sequences = [record["sequence"] for record in batch]
         tokenized = tokenizer(
@@ -161,7 +167,7 @@ def populate_protein_cache(
     cache_root = ensure_dir(cache_root)
     missing_records = []
     hits = 0
-    for row in tqdm(
+    for row in progress(
         proteins.itertuples(index=False),
         total=len(proteins),
         desc="protein cache scan",
@@ -187,7 +193,7 @@ def populate_protein_cache(
                 "Deterministic embeddings are for smoke tests only. "
                 "Pass --allow-deterministic-embeddings to acknowledge this."
             )
-        for record in tqdm(missing_records, desc="deterministic embeddings"):
+        for record in progress(missing_records, desc="deterministic embeddings"):
             vector = deterministic_vector(record["sequence"], embedding_dim)
             _save_vector(protein_cache_path(cache_root, record["protein_id"]), vector)
             written += 1
@@ -221,7 +227,7 @@ def write_hdf5_view(
     ensure_dir(output_path.parent)
     ids = proteins["protein_id"].astype(str).tolist()
     vectors = np.zeros((len(ids), embedding_dim), dtype=np.float32)
-    for idx, protein_id in enumerate(tqdm(ids, desc="materialize HDF5")):
+    for idx, protein_id in enumerate(progress(ids, desc="materialize HDF5")):
         vectors[idx] = _load_vector(protein_cache_path(cache_root, protein_id), embedding_dim)
     with h5py.File(output_path, "w") as handle:
         string_dtype = h5py.string_dtype(encoding="utf-8")
